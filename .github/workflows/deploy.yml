@@ -1,0 +1,36 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Publish to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          environment: production
+
+# To use this workflow:
+# 1. Generate a Cloudflare API Token with "Edit Cloudflare Workers" permissions.
+# 2. Add it as a GitHub secret named CLOUDFLARE_API_TOKEN.
+# 3. Set your OpenAI and other secrets in Cloudflare via wrangler CLI.
