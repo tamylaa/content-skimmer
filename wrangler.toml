@@ -1,0 +1,35 @@
+name = "content-skimmer"
+main = "src/index.ts"
+compatibility_date = "2024-01-15"
+node_compat = true
+
+[env.production]
+name = "content-skimmer"
+
+[env.staging]
+name = "content-skimmer-staging"
+
+# Environment variables (set via wrangler secret)
+[vars]
+LOG_LEVEL = "info"
+DATA_SERVICE_URL = "https://data-service.tamyla.com"
+CONTENT_STORE_SERVICE_URL = "https://content-store.tamyla.com"
+MEILISEARCH_URL = "https://search.tamyla.com"
+
+# Secrets to be set via: wrangler secret put <name>
+# OPENAI_API_KEY
+# ANTHROPIC_API_KEY
+# MEILISEARCH_API_KEY
+# DATA_SERVICE_API_KEY
+# WEBHOOK_SECRET
+# JWT_SECRET
+
+# Cloudflare bindings (if using Vectorize)
+# [[vectorize]]
+# binding = "VECTORIZE"
+# index_name = "content-embeddings"
+
+# Queue binding (if using Cloudflare Queues for events)
+# [[queues.producers]]
+# queue = "content-processing"
+# binding = "CONTENT_QUEUE"

@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Worker",
+      "type": "shell",
+      "command": "npx tsc",
+      "problemMatcher": ["$tsc"],
+      "group": "build"
+    },
+    {
+      "label": "Dev Worker",
+      "type": "shell",
+      "command": "npx wrangler dev",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}
