@@ -22,7 +22,7 @@ MEILISEARCH_URL = "https://search.tamyla.com"
 # MEILISEARCH_API_KEY
 # DATA_SERVICE_API_KEY
 # WEBHOOK_SECRET
-# JWT_SECRET
+# AUTH_JWT_SECRET
 
 # Cloudflare bindings (if using Vectorize)
 # [[vectorize]]

@@ -2,6 +2,7 @@
 
 import { ContentSkimmer } from './core/ContentSkimmer';
 import { AuthValidator } from './security/AuthValidator';
+import type { ExecutionContext } from '@cloudflare/workers-types';
 import { FileRegistrationEvent, SkimmerConfig } from './types';
 
 export default {
@@ -17,7 +18,7 @@ export default {
         contentStoreServiceUrl: env.CONTENT_STORE_SERVICE_URL,
         dataServiceApiKey: env.DATA_SERVICE_API_KEY,
         webhookSecret: env.WEBHOOK_SECRET,
-        jwtSecret: env.JWT_SECRET,
+        jwtSecret: env.AUTH_JWT_SECRET,
         logLevel: env.LOG_LEVEL || 'info'
       };
 
