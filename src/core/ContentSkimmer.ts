@@ -1,4 +1,4 @@
-// Main orchestrator for the content skimming process
+// Main orchestrator for the content skimming process awareness
 
 import { FileRegistrationEvent, AnalysisResult, SearchDocument, SkimmerConfig, ProcessingContext } from '../types';
 import { DataService } from '../services/DataService';
