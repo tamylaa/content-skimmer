@@ -1,4 +1,4 @@
-// Structured logging for observability
+// Structured logging for observability issue
 
 export class Logger {
   private logLevel: string;

@@ -7,7 +7,7 @@ import { AIOrchestrator } from '../ai/AIOrchestrator';
 import { SearchFactory } from '../search/SearchFactory';
 import { EventBus } from '../events/EventBus';
 import { RetryQueue } from '../events/RetryQueue';
-import { Logger } from '../monitoring/Logger';
+import { Logger } from '../monitoring/logger';
 
 export class ContentSkimmer {
   private dataService: DataService;
