@@ -28,27 +28,67 @@ jobs:
       - name: Install latest Wrangler
         run: npm install --save-dev wrangler@latest
 
-      - name: Token format & verify check
+      - name: Sanitize token, verify, and deploy (single-step)
+        shell: bash
         run: |
-          echo "== Token length (masked) =="
-          # print token length to help detect accidental 'Bearer ' prefix, extra quotes or newlines
-          printf '%s' "$CLOUDFLARE_API_TOKEN" | wc -c
-          echo "== Token format test: /user/tokens/verify =="
-          # call verify endpoint to show exact error; response body will report header issues
-          curl -sS -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" | jq -C . || true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          set -euo pipefail
+          echo "== Analyzing CLOUDFLARE_API_TOKEN =="
+          TOKEN_RAW="$CLOUDFLARE_API_TOKEN"
+          
+          # Show raw token characteristics (masked)
+          echo "Raw token length: ${#TOKEN_RAW}"
+          echo "Raw token first 8 chars (masked): $(printf '%s' "$TOKEN_RAW" | cut -c1-8 | sed 's/./*/g')"
+          echo "Raw token last 8 chars (masked): $(printf '%s' "$TOKEN_RAW" | tail -c8 | sed 's/./*/g')"
+          
+          # Check for common issues
+          if [[ "$TOKEN_RAW" =~ ^\" ]]; then echo "⚠️  Token starts with quote"; fi
+          if [[ "$TOKEN_RAW" =~ \"$ ]]; then echo "⚠️  Token ends with quote"; fi
+          if [[ "$TOKEN_RAW" =~ ^Bearer ]]; then echo "⚠️  Token starts with 'Bearer'"; fi
+          if [[ "$TOKEN_RAW" =~ $'\r' ]]; then echo "⚠️  Token contains CR (\\r)"; fi
+          if [[ "$TOKEN_RAW" =~ $'\n' ]]; then echo "⚠️  Token contains LF (\\n)"; fi
+          
+          # Aggressive sanitization: remove quotes, Bearer prefix, CR/LF, and any whitespace
+          TOKEN_SANITIZED=$(printf '%s' "$TOKEN_RAW" | tr -d '\r\n\t ' | sed 's/^"//;s/"$//;s/^Bearer[[:space:]]*//i')
+          
+          echo "== After sanitization =="
+          echo "Sanitized token length: ${#TOKEN_SANITIZED}"
+          echo "Sanitized first 8 chars (masked): $(printf '%s' "$TOKEN_SANITIZED" | cut -c1-8 | sed 's/./*/g')"
+          echo "Sanitized last 8 chars (masked): $(printf '%s' "$TOKEN_SANITIZED" | tail -c8 | sed 's/./*/g')"
+          
+          # Sanity check: fail if token looks too short
+          if [[ ${#TOKEN_SANITIZED} -lt 30 ]]; then
+            echo "Sanitized token looks too short (length=${#TOKEN_SANITIZED}). Please ensure the CLOUDFLARE_API_TOKEN secret contains the raw token." >&2
+            exit 1
+          fi
 
-      - name: Wrangler diagnostics
-        run: |
-          echo "== Wrangler whoami (diagnostic) =="
-          npx wrangler whoami || true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          echo "== Verifying token with /user/tokens/verify =="
+          export CLOUDFLARE_API_TOKEN="$TOKEN_SANITIZED"
+          
+          # Test token with curl first
+          HTTP=$(curl -sS -w "%{http_code}" -o /tmp/cf_verify.json -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" -H "Authorization: Bearer $TOKEN_SANITIZED" -H "Content-Type: application/json" || echo "000")
+          echo "HTTP response code: $HTTP"
+          cat /tmp/cf_verify.json 2>/dev/null || echo "No response file"
+          
+          if [[ "$HTTP" != "200" ]]; then
+            echo "Token verification failed (http=$HTTP). The GitHub secret CLOUDFLARE_API_TOKEN may be incorrect." >&2
+            echo "Please generate a new Cloudflare API token and update the secret." >&2
+            exit 1
+          fi
+          echo "✓ Token verification succeeded"
 
-      - name: Publish to Cloudflare Workers
-        run: npx wrangler deploy --env production
+          echo "== Testing Wrangler whoami =="
+          npx wrangler whoami || {
+            echo "Wrangler whoami failed. Attempting deploy anyway..." >&2
+          }
+
+          echo "== Checking account_id consistency =="
+          FILE_ACCOUNT_ID=$(grep -oP 'account_id\s*=\s*"\K[0-9a-fA-F]+' wrangler.toml | head -1 || echo "")
+          echo "wrangler.toml account_id: ${FILE_ACCOUNT_ID:-<none>}"
+          echo "CLOUDFLARE_ACCOUNT_ID secret: ${CLOUDFLARE_ACCOUNT_ID:-<none>}"
+
+          echo "== Deploying to Cloudflare Workers =="
+          npx wrangler deploy --env production
+          echo "✓ Deploy completed successfully"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
