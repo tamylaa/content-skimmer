@@ -28,6 +28,14 @@ jobs:
       - name: Install latest Wrangler
         run: npm install --save-dev wrangler@latest
 
+      - name: Wrangler diagnostics
+        run: |
+          echo "== Wrangler whoami (diagnostic) =="
+          npx wrangler whoami || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Publish to Cloudflare Workers
         run: npx wrangler deploy --env production
         env:
