@@ -28,6 +28,17 @@ jobs:
       - name: Install latest Wrangler
         run: npm install --save-dev wrangler@latest
 
+      - name: Token format & verify check
+        run: |
+          echo "== Token length (masked) =="
+          # print token length to help detect accidental 'Bearer ' prefix, extra quotes or newlines
+          printf '%s' "$CLOUDFLARE_API_TOKEN" | wc -c
+          echo "== Token format test: /user/tokens/verify =="
+          # call verify endpoint to show exact error; response body will report header issues
+          curl -sS -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" | jq -C . || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
       - name: Wrangler diagnostics
         run: |
           echo "== Wrangler whoami (diagnostic) =="
