@@ -24,11 +24,15 @@ jobs:
       - name: Build project
         run: npm run build
 
+
+      - name: Install latest Wrangler
+        run: npm install --save-dev wrangler@latest
+
       - name: Publish to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          environment: production
+        run: npx wrangler deploy --env production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
 # To use this workflow:
 # 1. Generate a Cloudflare API Token with "Edit Cloudflare Workers" permissions.
