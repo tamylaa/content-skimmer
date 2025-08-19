@@ -1,13 +1,19 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Node",
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "removeComments": true,
+    "declaration": false,
+    "sourceMap": false,
+    "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests", "**/*.test.ts"]
 }

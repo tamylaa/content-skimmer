@@ -5,8 +5,12 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "wrangler dev",
-    "deploy": "wrangler publish"
+    "build:prod": "tsc --build --clean && tsc",
+    "clean": "rm -rf dist",
+    "dev": "npx wrangler dev",
+    "deploy": "npm run build:prod && npx wrangler deploy",
+    "deploy:prod": "npm run build:prod && npx wrangler deploy --env production",
+    "deploy:staging": "npm run build:prod && npx wrangler deploy --env staging"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250816.0",

@@ -42,7 +42,7 @@ export default {
       // File processing webhook endpoint
       if (url.pathname === '/webhook/file-registered' && request.method === 'POST') {
         // Validate webhook signature
-        if (!await authValidator.validateWebhook(request.clone())) {
+        if (!await authValidator.validateWebhook(request.clone() as any)) {
           return new Response('Unauthorized', { status: 401 });
         }
 

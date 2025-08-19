@@ -41,7 +41,7 @@ export class OpenAIProvider extends AIProvider {
     }
 
     const result = await response.json();
-    const analysisText = result.choices[0]?.message?.content;
+    const analysisText = (result as any).choices[0]?.message?.content;
     
     try {
       return JSON.parse(analysisText);

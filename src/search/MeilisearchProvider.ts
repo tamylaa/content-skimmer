@@ -60,7 +60,7 @@ export class MeilisearchProvider extends SearchEngine {
     }
 
     const result = await response.json();
-    return result.hits || [];
+    return (result as any).hits || [];
   }
 
   async bulkIndex(documents: SearchDocument[]): Promise<void> {
