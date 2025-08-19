@@ -11,7 +11,7 @@ account_id = "0506015145cda87c34f9ab8e9675a8a9"
 [env.production.vars]
 LOG_LEVEL = "info"
 DATA_SERVICE_URL = "https://data-service.tamyla.com"
-CONTENT_STORE_SERVICE_URL = "https://content-store.tamyla.com"
+CONTENT_STORE_SERVICE_URL = "https://content.tamyla.com"
 MEILISEARCH_URL = "https://search.tamyla.com"
 
 [env.staging]
@@ -21,14 +21,14 @@ account_id = "0506015145cda87c34f9ab8e9675a8a9"
 [env.staging.vars]
 LOG_LEVEL = "info"
 DATA_SERVICE_URL = "https://data-service.tamyla.com"
-CONTENT_STORE_SERVICE_URL = "https://content-store.tamyla.com"
+CONTENT_STORE_SERVICE_URL = "https://content.tamyla.com"
 MEILISEARCH_URL = "https://search.tamyla.com"
 
 # Environment variables (set via wrangler secret)
 [vars]
 LOG_LEVEL = "info"
 DATA_SERVICE_URL = "https://data-service.tamyla.com"
-CONTENT_STORE_SERVICE_URL = "https://content-store.tamyla.com"
+CONTENT_STORE_SERVICE_URL = "https://content.tamyla.com"
 MEILISEARCH_URL = "https://search.tamyla.com"
 
 # Secrets to be set via: wrangler secret put <name>
