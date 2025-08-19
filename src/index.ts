@@ -28,6 +28,14 @@ export default {
 
       const url = new URL(request.url);
       
+      // Root route handler for independent API testing
+      if (url.pathname === '/' && request.method === 'GET') {
+        return new Response(
+          'Content Skimmer Worker is running.\n\nTry /health for status or POST to /webhook/file-registered.',
+          { status: 200, headers: { 'Content-Type': 'text/plain' } }
+        );
+      }
+
       // Health check endpoint
       if (url.pathname === '/health') {
         return new Response(JSON.stringify({ 
