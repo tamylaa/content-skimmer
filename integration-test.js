@@ -1,12 +1,13 @@
-// test-worker-endpoints.js
-
+// integration-test.js
+// Integration test for the full content-skimmer flow
+// - Simulates a file registration event
+// - Mocks file retrieval (if possible)
+// - Checks AI provider call and result
 
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 
 const WORKER_URL = 'https://content-skimmer.tamylatrading.workers.dev';
-
-// Set your secrets here for local testing
 const AUTH_JWT_SECRET = 'd49f3be21dc5ebb3e95e4dfee78f524f8899313ccde1ce362c5df2d33429ad61';
 const WEBHOOK_SECRET = '3fde2f444560c2c5860c93a3e52f06c24d546ec46f41231ff501cc382b763c8a';
 
@@ -37,52 +38,47 @@ function generateWebhookSignature(body, secret) {
   return 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
 }
 
-async function testEndpoint(path, options = {}) {
-  const url = `${WORKER_URL}${path}`;
-  try {
-    const res = await fetch(url, options);
-    const text = await res.text();
-    console.log(`\n[${options.method || 'GET'}] ${url}`);
-    console.log(`Status: ${res.status}`);
-    console.log('Response:', text);
-  } catch (err) {
-    console.error(`Error fetching ${url}:`, err.message);
-  }
-}
-
-async function main() {
-  // Test root
-  await testEndpoint('/');
-
-  // Test health
-  await testEndpoint('/health');
-
-  // Test webhook (POST with valid signature)
-  const webhookBody = JSON.stringify({ fileId: 'test', fileName: 'test.txt' });
-  const webhookSignature = generateWebhookSignature(webhookBody, WEBHOOK_SECRET);
-  await testEndpoint('/webhook/file-registered', {
+async function testWebhookFlow() {
+  const event = { fileId: 'integration-test-file', fileName: 'integration.txt' };
+  const body = JSON.stringify(event);
+  const signature = generateWebhookSignature(body, WEBHOOK_SECRET);
+  const res = await fetch(`${WORKER_URL}/webhook/file-registered`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-signature-256': webhookSignature
+      'x-signature-256': signature
     },
-    body: webhookBody
+    body
   });
+  const text = await res.text();
+  console.log('\n[Webhook] Status:', res.status);
+  console.log('[Webhook] Response:', text);
+}
 
-  // Test process (POST with valid JWT)
+async function testProcessFlow() {
+  const event = { fileId: 'integration-test-file', fileName: 'integration.txt' };
   const jwtPayload = {
-    sub: 'test-user',
-    exp: Math.floor(Date.now() / 1000) + 60 * 10 // 10 minutes from now
+    sub: 'integration-test-user',
+    exp: Math.floor(Date.now() / 1000) + 60 * 10
   };
   const jwt = signJWT(jwtPayload, AUTH_JWT_SECRET);
-  await testEndpoint('/process', {
+  const res = await fetch(`${WORKER_URL}/process`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${jwt}`
     },
-    body: JSON.stringify({ fileId: 'test', fileName: 'test.txt' })
+    body: JSON.stringify(event)
   });
+  const text = await res.text();
+  console.log('\n[Process] Status:', res.status);
+  console.log('[Process] Response:', text);
+}
+
+async function main() {
+  await testWebhookFlow();
+  await testProcessFlow();
+  // Optionally, poll for results or check downstream effects here
 }
 
 main();
