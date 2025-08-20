@@ -50,20 +50,32 @@ export class ContentSkimmer {
       retryCount: 0
     };
 
+    const jobId = `job-${Date.now()}-${event.fileId}`;
+
     this.logger.info('Starting file processing', { 
       fileId: event.fileId, 
+      jobId,
       filename: event.filename,
       mimeType: event.mimeType,
       fileSize: event.fileSize
     });
 
     try {
-      // Update status to processing
-      await this.dataService.updateFileStatus(event.fileId, 'analyzing');
+      // Update status to processing (using old API for now, webhook will handle final status)
+      try {
+        await this.dataService.updateFileStatus(event.fileId, 'analyzing');
+      } catch (statusError) {
+        this.logger.warn('Could not update file status via old API, continuing with processing', {
+          fileId: event.fileId,
+          error: (statusError as Error).message
+        });
+      }
 
       // Check if AI can handle this file type
       if (!this.aiOrchestrator.hasCompatibleProvider(event.mimeType)) {
-        throw new Error(`Unsupported file type: ${event.mimeType}`);
+        const error = `Unsupported file type: ${event.mimeType}`;
+        await this.dataService.sendProcessingCallback(event.fileId, jobId, 'failed', null, error);
+        throw new Error(error);
       }
 
       // Get file content
@@ -72,36 +84,95 @@ export class ContentSkimmer {
       // Perform AI analysis
       const aiResult = await this.aiOrchestrator.analyzeFile(fileBuffer, event.mimeType);
 
-      // Prepare analysis result
-      const analysisResult: AnalysisResult = {
-        fileId: event.fileId,
+      // Prepare analysis result for webhook
+      const analysisResult = {
         summary: aiResult.summary,
-        entities: aiResult.entities,
-        topics: aiResult.topics,
-        enrichment: aiResult.enrichment,
-        r2References: [], // TODO: Handle large outputs stored in R2
-        analysisStatus: 'completed'
+        contentType: this.determineContentType(event.mimeType, aiResult),
+        extractedText: aiResult.summary, // Use summary as extracted text for now
+        metadata: {
+          pageCount: 1, // Estimate based on file type or size
+          wordCount: this.estimateWordCount(aiResult.summary),
+          language: aiResult.language || 'en',
+          confidence: 0.9, // Default confidence
+          processingTime: (Date.now() - context.startTime) / 1000,
+          extractionMethod: 'AI Analysis',
+          entities: aiResult.entities?.length || 0,
+          topics: aiResult.topics?.length || 0,
+          sentiment: aiResult.sentiment || 'neutral'
+        }
       };
 
-      // Save results to data service
-      await this.dataService.saveAnalysisResults(analysisResult);
-      await this.dataService.updateFileStatus(event.fileId, 'analyzed');
+      // Send success webhook callback
+      await this.dataService.sendProcessingCallback(event.fileId, jobId, 'completed', analysisResult);
+
+      // Legacy: Save results using old API (if it exists)
+      try {
+        const legacyResult: AnalysisResult = {
+          fileId: event.fileId,
+          summary: aiResult.summary,
+          entities: aiResult.entities,
+          topics: aiResult.topics,
+          enrichment: aiResult.enrichment,
+          r2References: [],
+          analysisStatus: 'completed'
+        };
+        await this.dataService.saveAnalysisResults(legacyResult);
+        await this.dataService.updateFileStatus(event.fileId, 'analyzed');
+      } catch (legacyError) {
+        this.logger.warn('Legacy API calls failed, but webhook was sent successfully', {
+          fileId: event.fileId,
+          error: (legacyError as Error).message
+        });
+      }
 
       // Emit completion event for search indexing
       await this.eventBus.emit('analysis_completed', { result: analysisResult, context, event });
 
       const processingTime = Date.now() - context.startTime;
-      this.logger.info('File processing completed', {
+      this.logger.info('File processing completed successfully', {
         fileId: event.fileId,
+        jobId,
         processingTimeMs: processingTime,
-        entitiesFound: aiResult.entities.length,
-        topicsFound: aiResult.topics.length
+        entitiesFound: aiResult.entities?.length || 0,
+        topicsFound: aiResult.topics?.length || 0
       });
 
     } catch (error) {
+      // Send failure webhook callback
+      try {
+        await this.dataService.sendProcessingCallback(event.fileId, jobId, 'failed', null, (error as Error).message);
+      } catch (webhookError) {
+        this.logger.error('Failed to send failure webhook', {
+          fileId: event.fileId,
+          originalError: (error as Error).message,
+          webhookError: (webhookError as Error).message
+        });
+      }
+
       await this.eventBus.emit('analysis_failed', { error, context, event });
       throw error;
     }
+  }
+
+  private determineContentType(mimeType: string, aiResult: any): string {
+    if (mimeType.includes('pdf')) return 'document';
+    if (mimeType.includes('image')) return 'image';
+    if (mimeType.includes('text')) return 'text';
+    if (mimeType.includes('application/vnd.openxmlformats') || mimeType.includes('application/msword')) return 'document';
+    
+    // Use AI result to determine content type if available
+    if (aiResult.topics && aiResult.topics.length > 0) {
+      const businessTopics = aiResult.topics.filter((topic: any) => 
+        topic.includes('business') || topic.includes('financial') || topic.includes('analysis')
+      );
+      if (businessTopics.length > 0) return 'business-document';
+    }
+    
+    return 'document';
+  }
+
+  private estimateWordCount(text: string): number {
+    return text ? text.split(/\s+/).length : 0;
   }
 
   private async getFileContent(event: FileRegistrationEvent): Promise<ArrayBuffer> {
@@ -163,10 +234,24 @@ export class ContentSkimmer {
       processingTimeMs: Date.now() - context.startTime
     });
 
+    const jobId = `job-${Date.now()}-${context.fileId}`;
+
     try {
+      // Send failure webhook callback
+      await this.dataService.sendProcessingCallback(context.fileId, jobId, 'failed', null, error.message);
+    } catch (webhookError) {
+      this.logger.error('Failed to send failure webhook callback', {
+        fileId: context.fileId,
+        originalError: error.message,
+        webhookError: (webhookError as Error).message
+      });
+    }
+
+    try {
+      // Legacy API call
       await this.dataService.updateFileStatus(context.fileId, 'analysis_failed', error.message);
     } catch (updateError) {
-      this.logger.error('Failed to update error status', {
+      this.logger.error('Failed to update error status via legacy API', {
         fileId: context.fileId,
         originalError: error.message,
         updateError: (updateError as Error).message

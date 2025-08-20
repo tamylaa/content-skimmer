@@ -68,4 +68,34 @@ export class DataService {
       throw new Error(`Failed to delete search index: ${response.statusText}`);
     }
   }
+
+  /**
+   * Send webhook callback to data-service when processing completes
+   */
+  async sendProcessingCallback(fileId: string, jobId: string, status: 'completed' | 'failed', result?: any, error?: string): Promise<void> {
+    const payload = {
+      fileId,
+      jobId,
+      status,
+      result,
+      error,
+      timestamp: new Date().toISOString()
+    };
+
+    const response = await fetch(`${this.baseUrl}/webhook/skimmer-complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-Secret': 'default-webhook-secret' // Should match data-service expectation
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Webhook callback failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    console.log(`Webhook callback sent successfully for file ${fileId} with status ${status}`);
+  }
 }
