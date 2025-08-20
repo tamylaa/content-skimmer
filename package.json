@@ -10,10 +10,15 @@
     "dev": "npx wrangler dev",
     "deploy": "npm run build:prod && npx wrangler deploy",
     "deploy:prod": "npm run build:prod && npx wrangler deploy --env production",
-    "deploy:staging": "npm run build:prod && npx wrangler deploy --env staging"
+    "deploy:staging": "npm run build:prod && npx wrangler deploy --env staging",
+    "test:worker": "node test-worker-endpoints.js",
+    "test:env": "node check-env.js"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250816.0",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
   }
 }
