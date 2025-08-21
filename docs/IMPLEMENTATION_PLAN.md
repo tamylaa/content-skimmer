@@ -1,6 +1,60 @@
 # Content Skimmer Implementation Plan
 
-## Phase 1: Core Infrastructure (Week 1)
+## Architectural Evolution Roadmap
+
+### Phase 0: Foundation Fixes (Week 1)
+**Goal:** Fix critical stubs and prepare for architectural evolution
+- [ ] Replace all TODOs/stubs in `/src/utils/` and `/src/ai/`
+- [ ] Implement proper file type detection and text extraction
+- [ ] Add comprehensive error handling and circuit breakers
+- [ ] Enhance monitoring and observability
+
+### Phase 1: Enhanced Enrichment Pipeline (Week 2)
+**Goal:** Transform extraction layer into full enrichment pipeline
+- [ ] Expand AI analysis to include embeddings and relationships
+- [ ] Implement semantic chunking for large documents
+- [ ] Add multi-modal content analysis (images, audio, video)
+- [ ] Create extensible enrichment framework
+
+### Phase 2: Search Sync Service (Week 3)
+**Goal:** Evolve search integration layer into dedicated service
+- [ ] Refactor search integration into loosely coupled service
+- [ ] Implement event-driven communication with Cloudflare Queues
+- [ ] Add support for hybrid search (keyword + semantic)
+- [ ] Enable independent scaling and reindexing capabilities
+
+### Phase 3: Performance & Scale (Week 4)
+**Goal:** Optimize for high-volume processing
+- [ ] Implement streaming processing for large files
+- [ ] Add multi-layer caching strategy
+- [ ] Optimize database queries and API calls
+- [ ] Implement batch processing capabilities
+
+## Current Implementation Status
+
+### ✅ Completed
+- Basic search engine integration (Meilisearch, Vectorize)
+- Event-driven architecture with retry mechanisms
+- Security layers with webhook validation and JWT auth
+- Structured logging and monitoring foundation
+- **Enhanced enrichment pipeline with comprehensive text analysis**
+- **Circuit breaker pattern for external service resilience**
+- **Advanced metrics collection and health monitoring**
+- **Improved text extraction service for multiple file types**
+- **Enhanced OpenAI provider with fallback mechanisms**
+
+### 🚧 In Progress
+- Multi-search engine support (foundation complete, needs testing)
+- AI provider system with OpenAI integration (enhanced)
+- Search sync service evolution (architecture planned)
+
+### ❌ Not Started
+- Streaming processing for large files
+- Multi-modal AI analysis (video/audio transcription)
+- Queue-based processing with Cloudflare Queues
+- Data sharding and replication strategy
+
+## Legacy Phase Structure (For Reference)
 
 ### 1.1 Search Engine Integration Layer
 ```typescript

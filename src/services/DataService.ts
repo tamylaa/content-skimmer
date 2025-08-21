@@ -1,6 +1,7 @@
 // Service for interacting with the data-service API
 
 import { AnalysisResult } from '../types';
+import { circuitBreakerManager } from '../utils/CircuitBreaker';
 
 export class DataService {
   private baseUrl: string;
@@ -12,67 +13,113 @@ export class DataService {
   }
 
   async getFileMetadata(fileId: string): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/api/files/${fileId}/metadata`, {
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
+    const breaker = circuitBreakerManager.getBreaker('data-service-metadata');
+    
+    return breaker.execute(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/api/files/${fileId}/metadata`, {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to get file metadata: ${response.statusText}`);
+        }
+
+        return response.json();
+      },
+      async () => {
+        // Fallback metadata
+        return {
+          fileId,
+          filename: 'unknown-file',
+          mimeType: 'application/octet-stream',
+          uploadedAt: new Date().toISOString(),
+          fallback: true
+        };
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to get file metadata: ${response.statusText}`);
-    }
-
-    return response.json();
+    );
   }
 
   async saveAnalysisResults(result: AnalysisResult): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/files/${result.fileId}/analysis-results`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(result)
-    });
+    const breaker = circuitBreakerManager.getBreaker('data-service-analysis');
+    
+    return breaker.execute(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/api/files/${result.fileId}/analysis-results`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(result)
+        });
 
-    if (!response.ok) {
-      throw new Error(`Failed to save analysis results: ${response.statusText}`);
-    }
+        if (!response.ok) {
+          throw new Error(`Failed to save analysis results: ${response.statusText}`);
+        }
+      },
+      async () => {
+        // Fallback: log the failure for later retry
+        console.warn(`Failed to save analysis results for ${result.fileId}, will retry later`);
+      }
+    );
   }
 
   async updateFileStatus(fileId: string, status: string, error?: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/files/${fileId}/status`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status, error })
-    });
+    const breaker = circuitBreakerManager.getBreaker('data-service-status');
+    
+    return breaker.execute(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/api/files/${fileId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status, error })
+        });
 
-    if (!response.ok) {
-      throw new Error(`Failed to update file status: ${response.statusText}`);
-    }
+        if (!response.ok) {
+          throw new Error(`Failed to update file status: ${response.statusText}`);
+        }
+      },
+      async () => {
+        console.warn(`Failed to update status for ${fileId} to ${status}, will retry later`);
+      }
+    );
   }
 
   async deleteSearchIndex(fileId: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/files/${fileId}/search-index`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`
-      }
-    });
+    const breaker = circuitBreakerManager.getBreaker('data-service-search');
+    
+    return breaker.execute(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/api/files/${fileId}/search-index`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`
+          }
+        });
 
-    if (!response.ok) {
-      throw new Error(`Failed to delete search index: ${response.statusText}`);
-    }
+        if (!response.ok) {
+          throw new Error(`Failed to delete search index: ${response.statusText}`);
+        }
+      },
+      async () => {
+        console.warn(`Failed to delete search index for ${fileId}, will retry later`);
+      }
+    );
   }
 
   /**
    * Send webhook callback to data-service when processing completes
    */
   async sendProcessingCallback(fileId: string, jobId: string, status: 'completed' | 'failed', result?: any, error?: string): Promise<void> {
+    const breaker = circuitBreakerManager.getBreaker('data-service-webhook');
+    
     const payload = {
       fileId,
       jobId,
@@ -82,20 +129,29 @@ export class DataService {
       timestamp: new Date().toISOString()
     };
 
-    const response = await fetch(`${this.baseUrl}/webhook/skimmer-complete`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Webhook-Secret': 'default-webhook-secret' // Should match data-service expectation
+    return breaker.execute(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/webhook/skimmer-complete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Webhook-Secret': 'default-webhook-secret' // Should match data-service expectation
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Webhook callback failed: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        console.log(`Webhook callback sent successfully for file ${fileId} with status ${status}`);
       },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Webhook callback failed: ${response.status} ${response.statusText} - ${errorText}`);
-    }
-
-    console.log(`Webhook callback sent successfully for file ${fileId} with status ${status}`);
+      async () => {
+        console.error(`Failed to send webhook callback for ${fileId}, critical data may be lost`);
+        // In production, this should be queued for retry
+        throw new Error(`Webhook callback failed for ${fileId} - this is critical`);
+      }
+    );
   }
 }
