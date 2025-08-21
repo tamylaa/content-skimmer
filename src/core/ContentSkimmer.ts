@@ -8,8 +8,7 @@ import { SearchFactory } from '../search/SearchFactory';
 import { EventBus } from '../events/EventBus';
 import { RetryQueue } from '../events/RetryQueue';
 import { Logger } from '../monitoring/Logger';
-import { QueryCaptureService, SessionManager } from '../services/QueryLearningService';
-import { D1QueryService } from '../services/D1QueryService';
+import { QueryCaptureService, SessionManager } from '../services/QueryLearningAPIClient';
 
 export class ContentSkimmer {
   private dataService: DataService;
@@ -20,8 +19,7 @@ export class ContentSkimmer {
   private retryQueue: RetryQueue;
   private logger: Logger;
   
-  // Query learning components (Phase 1)
-  private d1QueryService?: D1QueryService;
+  // Query learning components (Phase 1) - now using API client
   private queryCapture?: QueryCaptureService;
   private sessionManager?: SessionManager;
   private env?: any;
@@ -55,17 +53,23 @@ export class ContentSkimmer {
    * Initialize query learning components (Phase 1)
    */
   private initializeQueryLearningComponents(): void {
-    if (!this.env?.QUERY_LEARNING_DB) {
-      this.logger.warn('Query learning D1 database not configured');
+    if (!this.env?.DATA_SERVICE_URL || !this.env?.DATA_SERVICE_API_KEY) {
+      this.logger.warn('Query learning data service not configured');
       return;
     }
 
     try {
-      this.d1QueryService = new D1QueryService(this.env.QUERY_LEARNING_DB);
-      this.queryCapture = new QueryCaptureService(this.d1QueryService, this.logger);
-      this.sessionManager = new SessionManager(this.d1QueryService);
+      this.queryCapture = new QueryCaptureService(
+        this.env.DATA_SERVICE_URL, 
+        this.env.DATA_SERVICE_API_KEY, 
+        this.logger
+      );
+      this.sessionManager = new SessionManager(
+        this.env.DATA_SERVICE_URL, 
+        this.env.DATA_SERVICE_API_KEY
+      );
       
-      this.logger.info('Query learning components initialized');
+      this.logger.info('Query learning components initialized with API client');
     } catch (error) {
       this.logger.error('Failed to initialize query learning components', {
         error: (error as Error).message
@@ -75,17 +79,13 @@ export class ContentSkimmer {
 
   /**
    * Initialize query learning database schema (admin operation)
+   * This is now handled by the data-service migrations
    */
   async initializeQueryLearning(): Promise<boolean> {
-    if (!this.d1QueryService) {
-      this.initializeQueryLearningComponents();
-    }
-
-    if (!this.d1QueryService) {
-      return false;
-    }
-
-    return await this.d1QueryService.initializeSchema();
+    // Query learning schema is now managed by data-service migrations
+    // This method can trigger schema initialization via API if needed
+    this.logger.info('Query learning schema managed by data-service');
+    return true;
   }
 
   async processFile(event: FileRegistrationEvent): Promise<void> {
@@ -674,7 +674,17 @@ export class ContentSkimmer {
     }
 
     try {
-      return await this.queryCapture.getQueryAnalytics(userId);
+      // Use individual API calls to build analytics
+      const recentQueries = await this.queryCapture.getRecentQueries(userId, 30);
+      const topPatterns = await this.queryCapture.getUserQueryPatterns(userId);
+      
+      return {
+        recentQueries: recentQueries.slice(0, 10),
+        topPatterns: topPatterns.slice(0, 5),
+        suggestions: topPatterns.filter(p => p.successRate > 0.7).map(p => p.patternText).slice(0, 5),
+        totalQueries: recentQueries.length,
+        averageResponseTime: recentQueries.reduce((sum, q) => sum + q.responseTime, 0) / Math.max(recentQueries.length, 1)
+      };
     } catch (error) {
       this.logger.error('Failed to get query analytics', {
         userId,
