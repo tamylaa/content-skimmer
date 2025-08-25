@@ -1,26 +1,49 @@
 // Main Cloudflare Worker entry point
 
-import { ContentSkimmer } from './core/ContentSkimmer';
-import { AuthValidator } from './security/AuthValidator';
+import { ContentSkimmer } from './core/ContentSkimmer.js';
+import { AuthValidator } from './security/AuthValidator.js';
 import type { ExecutionContext } from '@cloudflare/workers-types';
-import { FileRegistrationEvent, SkimmerConfig } from './types';
+import { FileRegistrationEvent, SkimmerConfig } from './types/index.js';
+
+// Configuration helper using standardized environment variables
+function getSkimmerConfig(env: any): SkimmerConfig {
+  return {
+    environment: (env.NODE_ENV || 'development') as 'development' | 'staging' | 'production',
+    serviceName: env.SERVICE_NAME || 'content-skimmer',
+    logLevel: (env.LOG_LEVEL || 'info') as 'debug' | 'info' | 'warn' | 'error',
+    
+    // Authentication - standardized naming
+    authJwtSecret: env.AUTH_JWT_SECRET || '',
+    
+    // Service URLs - consistent patterns
+    dataServiceUrl: env.DATA_SERVICE_URL || '',
+    contentStoreServiceUrl: env.CONTENT_STORE_SERVICE_URL || '',
+    authServiceUrl: env.AUTH_SERVICE_URL || '',
+    meilisearchUrl: env.MEILISEARCH_HOST || '',
+
+    // API Keys
+    dataServiceApiKey: env.DATA_SERVICE_API_KEY || '',
+    meilisearchApiKey: env.MEILIS_MASTER_KEY || '',
+    openaiApiKey: env.OPENAI_API_KEY || '',
+    anthropicApiKey: env.ANTHROPIC_API_KEY || '',
+    
+    // Webhooks
+    webhookSecret: env.WEBHOOK_SECRET || '',
+    
+    // CORS
+    corsOrigins: env.CORS_ORIGINS || '',
+    
+    // File handling
+    maxFileSize: parseInt(env.MAX_FILE_SIZE || '26214400', 10),
+    allowedFileTypes: env.ALLOWED_FILE_TYPES || ''
+  };
+}
 
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     try {
-      // Load configuration from environment
-      const config: SkimmerConfig = {
-        openaiApiKey: env.OPENAI_API_KEY,
-        anthropicApiKey: env.ANTHROPIC_API_KEY,
-        meilisearchUrl: env.MEILISEARCH_URL,
-        meilisearchApiKey: env.MEILISEARCH_API_KEY,
-        dataServiceUrl: env.DATA_SERVICE_URL,
-        contentStoreServiceUrl: env.CONTENT_STORE_SERVICE_URL,
-        dataServiceApiKey: env.DATA_SERVICE_API_KEY,
-        webhookSecret: env.WEBHOOK_SECRET,
-        jwtSecret: env.AUTH_JWT_SECRET,
-        logLevel: env.LOG_LEVEL || 'info'
-      };
+      // Load configuration using standardized environment variables
+      const config = getSkimmerConfig(env);
 
       // Initialize services
       const skimmer = new ContentSkimmer(config, env);
@@ -38,8 +61,8 @@ export default {
 
       // Health check endpoint
       if (url.pathname === '/health') {
-        const { healthChecker, metricsCollector } = await import('./monitoring/Metrics');
-        const { circuitBreakerManager } = await import('./utils/CircuitBreaker');
+        const { healthChecker, metricsCollector } = await import('./monitoring/Metrics.js');
+        const { circuitBreakerManager } = await import('./utils/CircuitBreaker.js');
         
         const healthStatus = await healthChecker.runChecks();
         const queueStatus = await skimmer.getQueueStatus();

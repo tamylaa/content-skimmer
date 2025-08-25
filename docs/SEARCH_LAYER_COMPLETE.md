@@ -159,8 +159,8 @@ export class SearchFactory {
 ### **Environment Variables**
 ```bash
 # Meilisearch
-MEILISEARCH_URL=https://your-meilisearch.com
-MEILISEARCH_API_KEY=your-api-key
+MEILISEARCH_HOST=https://your-meilisearch.com
+MEILIS_MASTER_KEY=your-api-key
 
 # Vectorize (automatically available in Cloudflare Workers)
 # No additional config needed

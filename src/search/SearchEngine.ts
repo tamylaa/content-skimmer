@@ -1,6 +1,6 @@
 // Abstract interface for search engine providers
 
-import { SearchDocument } from '../types';
+import { SearchDocument } from '../types/index.js';
 
 export abstract class SearchEngine {
   abstract indexDocument(document: SearchDocument): Promise<void>;

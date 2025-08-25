@@ -1,7 +1,7 @@
 // Service for interacting with the data-service API
 
-import { AnalysisResult } from '../types';
-import { circuitBreakerManager } from '../utils/CircuitBreaker';
+import { AnalysisResult } from '../types/index.js';
+import { circuitBreakerManager } from '../utils/CircuitBreaker.js';
 
 export class DataService {
   private baseUrl: string;
@@ -17,7 +17,7 @@ export class DataService {
     
     return breaker.execute(
       async () => {
-        const response = await fetch(`${this.baseUrl}/api/files/${fileId}/metadata`, {
+        const response = await fetch(`${this.baseUrl}/files/${fileId}`, {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json'
@@ -28,7 +28,8 @@ export class DataService {
           throw new Error(`Failed to get file metadata: ${response.statusText}`);
         }
 
-        return response.json();
+        const result = await response.json();
+        return result.success ? result.data : result;
       },
       async () => {
         // Fallback metadata
@@ -48,13 +49,19 @@ export class DataService {
     
     return breaker.execute(
       async () => {
-        const response = await fetch(`${this.baseUrl}/api/files/${result.fileId}/analysis-results`, {
-          method: 'POST',
+        const response = await fetch(`${this.baseUrl}/files/${result.fileId}`, {
+          method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(result)
+          body: JSON.stringify({
+            analysis_result: JSON.stringify(result),
+            analysis_summary: result.summary,
+            processing_status: result.analysisStatus === 'completed' ? 'completed' : 'failed',
+            processing_completed_at: new Date().toISOString(),
+            extraction_status: result.error ? 'failed' : 'success'
+          })
         });
 
         if (!response.ok) {
@@ -73,13 +80,17 @@ export class DataService {
     
     return breaker.execute(
       async () => {
-        const response = await fetch(`${this.baseUrl}/api/files/${fileId}/status`, {
-          method: 'PUT',
+        const response = await fetch(`${this.baseUrl}/files/${fileId}`, {
+          method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ status, error })
+          body: JSON.stringify({
+            processing_status: status,
+            ...(error && { error }),
+            last_callback_at: new Date().toISOString()
+          })
         });
 
         if (!response.ok) {
@@ -87,31 +98,17 @@ export class DataService {
         }
       },
       async () => {
-        console.warn(`Failed to update status for ${fileId} to ${status}, will retry later`);
+        // Fallback: log status update for later retry
+        console.warn(`Failed to update status for ${fileId} to ${status}`);
       }
     );
   }
 
   async deleteSearchIndex(fileId: string): Promise<void> {
-    const breaker = circuitBreakerManager.getBreaker('data-service-search');
-    
-    return breaker.execute(
-      async () => {
-        const response = await fetch(`${this.baseUrl}/api/files/${fileId}/search-index`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to delete search index: ${response.statusText}`);
-        }
-      },
-      async () => {
-        console.warn(`Failed to delete search index for ${fileId}, will retry later`);
-      }
-    );
+    // This method is deprecated - search index is now managed by meilisearch service
+    // Keep for backward compatibility but make it a no-op
+    console.log(`Search index deletion for ${fileId} is now handled by meilisearch service`);
+    return Promise.resolve();
   }
 
   /**

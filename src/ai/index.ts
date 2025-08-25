@@ -1,5 +1,5 @@
 // Modular AI provider entry (stub)
-import { summarizeText } from './openai';
+import { summarizeText } from './openai.js';
 
 export async function skimContent(fileBuffer: ArrayBuffer, fileType: string, env: any): Promise<any> {
   // Example: Only handle text for now

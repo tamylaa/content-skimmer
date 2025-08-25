@@ -1,80 +1,90 @@
 // Meilisearch implementation of search engine
 
-import { SearchEngine } from './SearchEngine';
-import { SearchDocument } from '../types';
+import { SearchEngine } from './SearchEngine.js';
+import { SearchDocument } from '../types/index.js';
 
+/**
+ * MeilisearchProvider now calls the Meilisearch Cloudflare Worker gateway
+ * instead of talking to Meili directly with an admin key. This centralizes
+ * auth and ensures only the worker can write to the index.
+ */
 export class MeilisearchProvider extends SearchEngine {
-  private url: string;
-  private apiKey: string;
-  private indexName: string;
+  private workerUrl: string;
+  private serviceToken?: string;
 
-  constructor(url: string, apiKey: string, indexName: string = 'content') {
+  constructor(workerUrl: string, serviceToken?: string) {
     super();
-    this.url = url;
-    this.apiKey = apiKey;
-    this.indexName = indexName;
+    this.workerUrl = workerUrl.replace(/\/$/, '');
+    this.serviceToken = serviceToken;
+  }
+
+  private authHeaders() {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.serviceToken) headers['Authorization'] = `Bearer ${this.serviceToken}`;
+    return headers;
   }
 
   async indexDocument(document: SearchDocument): Promise<void> {
-    const response = await fetch(`${this.url}/indexes/${this.indexName}/documents`, {
+    // Ensure compatibility with gateway user isolation (expects user_id field)
+    const gatewayDocument = {
+      ...document,
+      user_id: document.userId // Gateway expects user_id instead of userId
+    };
+
+    const response = await fetch(`${this.workerUrl}/documents`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify([document])
+      headers: this.authHeaders(),
+      body: JSON.stringify([gatewayDocument])
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to index document: ${response.statusText}`);
+      throw new Error(`Failed to index document via worker: ${response.status} ${response.statusText}`);
     }
   }
 
   async deleteDocument(documentId: string): Promise<void> {
-    const response = await fetch(`${this.url}/indexes/${this.indexName}/documents/${documentId}`, {
+    const response = await fetch(`${this.workerUrl}/documents`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`
-      }
+      headers: this.authHeaders(),
+      body: JSON.stringify({ ids: [documentId] })
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to delete document: ${response.statusText}`);
+      throw new Error(`Failed to delete document via worker: ${response.status} ${response.statusText}`);
     }
   }
 
   async searchDocuments(query: string, filters?: object): Promise<SearchDocument[]> {
-    const searchParams = new URLSearchParams({
-      q: query,
-      ...(filters && { filter: JSON.stringify(filters) })
-    });
+    const searchParams = new URLSearchParams({ q: query });
+    if (filters) searchParams.set('filter', typeof filters === 'string' ? (filters as any) : JSON.stringify(filters));
 
-    const response = await fetch(`${this.url}/indexes/${this.indexName}/search?${searchParams}`, {
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`
-      }
-    });
+    const url = `${this.workerUrl}/search?${searchParams.toString()}`;
+    const response = await fetch(url, { headers: this.authHeaders() });
 
     if (!response.ok) {
-      throw new Error(`Failed to search documents: ${response.statusText}`);
+      throw new Error(`Failed to search via worker: ${response.status} ${response.statusText}`);
     }
 
     const result = await response.json();
-    return (result as any).hits || [];
+    // Worker returns Meilisearch search response; normalize to hits array if present
+    return (result as any).hits || (result as any).results || [];
   }
 
   async bulkIndex(documents: SearchDocument[]): Promise<void> {
-    const response = await fetch(`${this.url}/indexes/${this.indexName}/documents`, {
+    // Ensure compatibility with gateway user isolation (expects user_id field)
+    const gatewayDocuments = documents.map(document => ({
+      ...document,
+      user_id: document.userId // Gateway expects user_id instead of userId
+    }));
+
+    const response = await fetch(`${this.workerUrl}/documents`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(documents)
+      headers: this.authHeaders(),
+      body: JSON.stringify(gatewayDocuments)
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to bulk index documents: ${response.statusText}`);
+      throw new Error(`Failed to bulk index via worker: ${response.status} ${response.statusText}`);
     }
   }
 }

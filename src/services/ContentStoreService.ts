@@ -10,7 +10,7 @@ export class ContentStoreService {
   }
 
   async getSignedUrl(fileId: string): Promise<{ signedUrl: string; expiresAt: string }> {
-    const response = await fetch(`${this.baseUrl}/api/files/${fileId}/signed-url`, {
+    const response = await fetch(`${this.baseUrl}/files/${fileId}/signed-url`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,

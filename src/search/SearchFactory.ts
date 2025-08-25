@@ -1,9 +1,9 @@
 // Factory for creating search engine providers
 
-import { SearchEngine } from './SearchEngine';
-import { MeilisearchProvider } from './MeilisearchProvider';
-import { VectorizeProvider } from './VectorizeProvider';
-import { SkimmerConfig } from '../types';
+import { SearchEngine } from './SearchEngine.js';
+import { MeilisearchProvider } from './MeilisearchProvider.js';
+import { VectorizeProvider } from './VectorizeProvider.js';
+import { SkimmerConfig } from '../types/index.js';
 
 export class SearchFactory {
   static createSearchEngine(config: SkimmerConfig, env: any): SearchEngine {

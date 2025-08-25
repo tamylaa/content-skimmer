@@ -4,7 +4,7 @@
  * Replaces direct D1 access with API calls to data-service
  */
 
-import { Logger } from '../monitoring/Logger';
+import { Logger } from '../monitoring/Logger.js';
 
 export interface QueryEvent {
   id: string;

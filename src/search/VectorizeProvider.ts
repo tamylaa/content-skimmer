@@ -1,7 +1,7 @@
 // Cloudflare Vectorize implementation of search engine
 
-import { SearchEngine } from './SearchEngine';
-import { SearchDocument } from '../types';
+import { SearchEngine } from './SearchEngine.js';
+import { SearchDocument } from '../types/index.js';
 
 export class VectorizeProvider extends SearchEngine {
   private vectorize: any; // Cloudflare Vectorize binding

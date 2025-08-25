@@ -1,6 +1,6 @@
 // Text extraction service for different file types
 
-import { getFileTypeInfo, FileTypeInfo } from '../utils/filetype';
+import { getFileTypeInfo, FileTypeInfo } from '../utils/filetype.js';
 
 export interface TextExtractionResult {
   text: string;

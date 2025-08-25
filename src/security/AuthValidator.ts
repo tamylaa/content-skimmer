@@ -1,6 +1,6 @@
 // Authentication and authorization validation
 
-import { SkimmerConfig } from '../types';
+import { SkimmerConfig } from '../types/index.js';
 
 export class AuthValidator {
   private webhookSecret: string;
@@ -8,7 +8,7 @@ export class AuthValidator {
 
   constructor(config: SkimmerConfig) {
     this.webhookSecret = config.webhookSecret;
-    this.jwtSecret = config.jwtSecret;
+    this.jwtSecret = config.authJwtSecret;  // Use the correct property name
   }
 
   async validateWebhook(request: Request): Promise<boolean> {

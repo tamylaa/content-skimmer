@@ -1,9 +1,9 @@
 // OpenAI implementation of AI provider with cost optimization
 
-import { AIProvider, AIAnalysisResult } from './AIProvider';
-import { TextExtractionService } from './TextExtractionService';
-import { performFullEnrichment } from './enrichments';
-import { CostOptimizationService, COST_STRATEGIES } from './CostOptimizationService';
+import { AIProvider, AIAnalysisResult } from './AIProvider.js';
+import { TextExtractionService } from './TextExtractionService.js';
+import { performFullEnrichment } from './enrichments.js';
+import { CostOptimizationService, COST_STRATEGIES } from './CostOptimizationService.js';
 
 export class OpenAIProvider extends AIProvider {
   private apiKey: string;

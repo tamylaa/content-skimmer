@@ -1,14 +1,14 @@
 // Main orchestrator for the content skimming process awareness
 
-import { FileRegistrationEvent, AnalysisResult, SearchDocument, SkimmerConfig, ProcessingContext } from '../types';
-import { DataService } from '../services/DataService';
-import { ContentStoreService } from '../services/ContentStoreService';
-import { AIOrchestrator } from '../ai/AIOrchestrator';
-import { SearchFactory } from '../search/SearchFactory';
-import { EventBus } from '../events/EventBus';
-import { RetryQueue } from '../events/RetryQueue';
-import { Logger } from '../monitoring/Logger';
-import { QueryCaptureService, SessionManager } from '../services/QueryLearningAPIClient';
+import { FileRegistrationEvent, AnalysisResult, SearchDocument, SkimmerConfig, ProcessingContext } from '../types/index.js';
+import { DataService } from '../services/DataService.js';
+import { ContentStoreService } from '../services/ContentStoreService.js';
+import { AIOrchestrator } from '../ai/AIOrchestrator.js';
+import { SearchFactory } from '../search/SearchFactory.js';
+import { EventBus } from '../events/EventBus.js';
+import { RetryQueue } from '../events/RetryQueue.js';
+import { Logger } from '../monitoring/Logger.js';
+import { QueryCaptureService, SessionManager } from '../services/QueryLearningAPIClient.js';
 
 export class ContentSkimmer {
   private dataService: DataService;
@@ -89,7 +89,7 @@ export class ContentSkimmer {
   }
 
   async processFile(event: FileRegistrationEvent): Promise<void> {
-    const { metricsCollector } = await import('../monitoring/Metrics');
+    const { metricsCollector } = await import('../monitoring/Metrics.js');
     
     const context: ProcessingContext = {
       fileId: event.fileId,
@@ -279,7 +279,7 @@ export class ContentSkimmer {
   }
 
   private async updateSearchIndex(result: AnalysisResult, context: ProcessingContext): Promise<void> {
-    const { metricsCollector } = await import('../monitoring/Metrics');
+    const { metricsCollector } = await import('../monitoring/Metrics.js');
     
     try {
       // Get file metadata for search document
@@ -376,7 +376,7 @@ export class ContentSkimmer {
   }
 
   async searchContent(query: string, userId: string, engine: string = 'all', limit: number = 20): Promise<SearchDocument[]> {
-    const { metricsCollector } = await import('../monitoring/Metrics');
+    const { metricsCollector } = await import('../monitoring/Metrics.js');
     const operationId = `search-${Date.now()}-${Math.random()}`;
     metricsCollector.startTimer(operationId);
 
@@ -519,7 +519,7 @@ export class ContentSkimmer {
   }
 
   async advancedSearch(searchRequest: any, userId: string): Promise<any> {
-    const { metricsCollector } = await import('../monitoring/Metrics');
+    const { metricsCollector } = await import('../monitoring/Metrics.js');
     const operationId = `advanced-search-${Date.now()}-${Math.random()}`;
     metricsCollector.startTimer(operationId);
 

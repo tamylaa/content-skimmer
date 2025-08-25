@@ -197,7 +197,7 @@ healthChecker.addCheck('memory', async () => {
 });
 
 healthChecker.addCheck('circuit_breakers', async () => {
-  const { circuitBreakerManager } = await import('../utils/CircuitBreaker');
+  const { circuitBreakerManager } = await import('../utils/CircuitBreaker.js');
   const statuses = circuitBreakerManager.getAllStatus();
   const openBreakers = statuses.filter(s => s.state.state === 'OPEN');
   

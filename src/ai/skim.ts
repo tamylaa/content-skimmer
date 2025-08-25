@@ -1,5 +1,5 @@
-import { skimContent } from './index';
-import { extractEntities, extractTopics } from './enrichments';
+import { skimContent } from './index.js';
+import { extractEntities, extractTopics } from './enrichments.js';
 
 export async function skimFile(fileBuffer: ArrayBuffer, fileType: string, env: any): Promise<any> {
   const aiResult = await skimContent(fileBuffer, fileType, env);

@@ -1,9 +1,10 @@
-// check-env.js
+import '../../tests/testSetup.js';
+
 const required = [
   'OPENAI_API_KEY',
   'ANTHROPIC_API_KEY',
-  'MEILISEARCH_URL',
-  'MEILISEARCH_API_KEY',
+  'MEILISEARCH_HOST',
+  'MEILI_MASTER_KEY',
   'DATA_SERVICE_URL',
   'CONTENT_STORE_SERVICE_URL',
   'DATA_SERVICE_API_KEY',

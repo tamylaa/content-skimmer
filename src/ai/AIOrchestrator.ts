@@ -1,8 +1,8 @@
 // Orchestrates AI analysis with fallback providers and cost optimization
 
-import { AIProvider, AIAnalysisResult } from './AIProvider';
-import { OpenAIProvider } from './OpenAIProvider';
-import { SkimmerConfig } from '../types';
+import { AIProvider, AIAnalysisResult } from './AIProvider.js';
+import { OpenAIProvider } from './OpenAIProvider.js';
+import { SkimmerConfig } from '../types/index.js';
 
 export class AIOrchestrator {
   private providers: AIProvider[];
